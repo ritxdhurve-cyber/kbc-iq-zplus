@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Crorepati</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(circle, #173b88, #02051d);
+  color: white;
+  text-align: center;
+  min-height: 100vh;
+}
+
+header {
+  padding: 20px 10px;
+  background: #07133c;
+  border-bottom: 3px solid gold;
+}
+
+h1 { color: gold; margin: 5px; }
+#money { color: #ffe66d; font-size: 22px; }
+
+.container {
+  width: 94%;
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+#ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.level {
+  background: #14275b;
+  border: 1px solid #7187c4;
+  padding: 7px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.level.active {
+  background: #f4b400;
+  color: #111;
+  font-weight: bold;
+}
+
+#questionBox {
+  background: #101c50;
+  border: 2px solid gold;
+  border-radius: 25px;
+  padding: 22px 14px;
+  margin: 15px 0;
+  font-size: 19px;
+  min-height: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+button {
+  cursor: pointer;
+  font-size: 16px;
+  padding: 15px 8px;
+  border-radius: 25px;
+  border: 2px solid #e5c45b;
+  background: #132d70;
+  color: white;
+}
+
+button:active { transform: scale(.98); }
+
+button:disabled {
+  cursor: default;
+  opacity: .75;
+}
+
+.correct { background: #14833b !important; }
+.wrong { background: #bd2525 !important; }
+
+#message {
+  min-height: 30px;
+  margin: 16px 0;
+  font-weight: bold;
+}
+
+#next, #restart {
+  background: #f5c400;
+  color: #111;
+  border: none;
+  font-weight: bold;
+  margin: 5px;
+  min-width: 130px;
+}
+
+footer { padding: 20px; color: #ccd5ff; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🏆 QUIZ CROREPATI 🏆</h1>
+  <p>Apna Gyaan Aazmao!</p>
+  <div id="money">Inaam: ₹0</div>
+</header>
+
+<div class="container">
+
+  <div id="ladder"></div>
+
+  <div id="questionBox">
+    Game shuru karne ke liye button dabao!
+  </div>
+
+  <div class="options" id="options"></div>
+
+  <div id="message" aria-live="polite"></div>
+
+  <button id="next" type="button" hidden>Agla Sawaal ➜</button>
+  <button id="restart" type="button">🔄 Naya Game</button>
+
+</div>
+
+<footer>Quiz Crorepati • Hindi Quiz Game</footer>
+
+<script>
+const questions = [
+  {
+    q: "Bharat ki rajdhani kya hai?",
+    a: ["Mumbai", "New Delhi", "Kolkata", "Chennai"],
+    c: 1
+  },
+  {
+    q: "Surya kis disha se nikalta hai?",
+    a: ["Uttar", "Dakshin", "Purab", "Paschim"],
+    c: 2
+  },
+  {
+    q: "Bharat ka rashtriya pashu kaun hai?",
+    a: ["Sher", "Baagh", "Haathi", "Ghoda"],
+    c: 1
+  },
+  {
+    q: "Ek hafte mein kitne din hote hain?",
+    a: ["5", "6", "7", "8"],
+    c: 2
+  },
+  {
+    q: "Computer ka brain kise kaha jata hai?",
+    a: ["Mouse", "Keyboard", "Monitor", "CPU"],
+    c: 3
+  },
+  {
+    q: "Bharat ka Samvidhan kab lagu hua?",
+    a: ["15 August 1947", "26 January 1950",
+        "2 October 1948", "26 November 1949"],
+    c: 1
+  },
+  {
+    q: "Duniya ka sabse bada grah kaun sa hai?",
+    a: ["Prithvi", "Mangal", "Brihaspati", "Shukra"],
+    c: 2
+  },
+  {
+    q: "Paani ka rasayanik formula kya hai?",
+    a: ["CO2", "O2", "H2O", "NaCl"],
+    c: 2
+  },
+  {
+    q: "Bharat ka rashtriya gaan kisne likha?",
+    a: ["Premchand", "Rabindranath Tagore",
+        "Mahatma Gandhi", "Subhash Chandra Bose"],
+    c: 1
+  },
+  {
+    q: "Ek kilometer mein kitne meter hote hain?",
+    a: ["100", "500", "1000", "10000"],
+    c: 2
+  }
+];
+
+const prizes = [
+  1000, 2000, 5000, 10000, 20000,
+  50000, 100000, 1000000, 5000000, 70000000
+];
+
+let current = 0;
+let winnings = 0;
+let answered = false;
+let gameOver = false;
+let shuffled = [];
+
+const questionBox = document.getElementById("questionBox");
+const optionsBox = document.getElementById("options");
+const message = document.getElementById("message");
+const nextButton = document.getElementById("next");
+const money = document.getElementById("money");
+const ladder = document.getElementById("ladder");
+
+function formatMoney(amount) {
+  return "₹" + amount.toLocaleString("en-IN");
+}
+
+function makeLadder() {
+  ladder.innerHTML = "";
+  prizes.forEach((prize, i) => {
+    const div = document.createElement("div");
+    div.className = "level";
+    div.textContent = (i + 1) + ". " + formatMoney(prize);
+    div.id = "level" + i;
+    ladder.appendChild(div);
+  });
+}
+
+function showQuestion() {
+  answered = false;
+  nextButton.hidden = true;
+  message.textContent = "";
+  money.textContent = "Inaam: " + formatMoney(winnings);
+
+  document.querySelectorAll(".level").forEach(el =>
+    el.classList.remove("active")
+  );
+
+  document.getElementById("level" + current).classList.add("active");
+
+  questionBox.textContent =
+    "Sawaal " + (current + 1) + ": " + shuffled[current].q;
+
+  optionsBox.innerHTML = "";
+
+  shuffled[current].a.forEach((answer, index) => {
+    const button = document.createElement("button");
+    button.textContent =
+      String.fromCharCode(65 + index) + ": " + answer;
+    button.type = "button";
+    button.addEventListener("click", () => checkAnswer(index, button));
+    optionsBox.appendChild(button);
+  });
+}
+
+function checkAnswer(index, selectedButton) {
+  if (answered || gameOver) return;
+
+  answered = true;
+  const correct = shuffled[current].c;
+  const buttons = optionsBox.querySelectorAll("button");
+
+  buttons.forEach(button => button.disabled = true);
+
+  if (index === correct) {
+    selectedButton.classList.add("correct");
+    winnings = prizes[current];
+    money.textContent = "Inaam: " + formatMoney(winnings);
+    message.textContent = "🎉 Bilkul Sahi Jawab!";
+
+    if (current === shuffled.length - 1) {
+      gameOver = true;
+      questionBox.textContent = "🏆 Mubarak Ho! Aap Crorepati Ban Gaye!";
+      message.textContent =
+        "Aapka kul inaam: " + formatMoney(winnings);
+      nextButton.hidden = true;
+      return;
+    }
+
+    nextButton.hidden = false;
+  } else {
+    selectedButton.classList.add("wrong");
+    buttons[correct].classList.add("correct");
+    gameOver = true;
+    questionBox.textContent = "Game Over!";
+    message.textContent =
+      "Sahi jawab tha: " + shuffled[current].a[correct] +
+      " | Aap jeete: " + formatMoney(winnings);
+    nextButton.hidden = true;
+  }
+}
+
+nextButton.addEventListener("click", () => {
+  if (answered && !gameOver) {
+    current++;
+    showQuestion();
+  }
+});
+
+document.getElementById("restart").addEventListener("click", startGame);
+
+function startGame() {
+  current = 0;
+  winnings = 0; 
+  gameOver = false;
+
+  shuffled = [...questions];
+
+  // Har naye game mein sawaalon ka order badlega.
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  makeLadder();
+  showQuestion();
+}
+
+startGame();
+</script>
+
+</body>
+</html>
